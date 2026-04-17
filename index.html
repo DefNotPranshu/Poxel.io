@@ -1,755 +1,489 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poxel.io Mini - FPS Arena Shooter</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        
-        body {
-            margin: 0;
-            padding: 0;
-            background: #111;
-            color: #0f0;
-            font-family: 'Press Start 2P', system-ui;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            image-rendering: pixelated;
-        }
-        
-        #game-container {
-            position: relative;
-            box-shadow: 0 0 30px #0ff;
-            border: 8px solid #222;
-        }
-        
-        canvas {
-            display: block;
-            background: #222;
-            image-rendering: pixelated;
-        }
-        
-        #ui {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            pointer-events: none;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-            text-shadow: 0 0 10px #0ff;
-        }
-        
-        .stat {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px 16px;
-            border: 3px solid #0ff;
-        }
-        
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 30px;
-            height: 30px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 200;
-            opacity: 0.7;
-        }
-        
-        #menu {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            border: 6px solid #0ff;
-            padding: 30px;
-            text-align: center;
-            display: none;
-            z-index: 300;
-            box-shadow: 0 0 40px #0ff;
-        }
-        
-        button {
-            font-family: 'Press Start 2P', system-ui;
-            background: #000;
-            color: #0ff;
-            border: 4px solid #0ff;
-            padding: 15px 30px;
-            margin: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            box-shadow: 0 0 15px #0ff;
-        }
-        
-        button:hover {
-            background: #0ff;
-            color: #000;
-        }
-        
-        #admin-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.95);
-            border: 6px solid #f00;
-            padding: 20px;
-            display: none;
-            z-index: 400;
-            width: 300px;
-            box-shadow: 0 0 40px #f00;
-        }
-        
-        input {
-            background: #111;
-            color: #0f0;
-            border: 3px solid #f00;
-            padding: 10px;
-            width: 100%;
-            margin: 10px 0;
-            font-family: 'Press Start 2P', system-ui;
-        }
-        
-        .title {
-            font-size: 28px;
-            text-align: center;
-            margin-bottom: 20px;
-            color: #0ff;
-            text-shadow: 0 0 20px #0ff;
-        }
-    </style>
-</head>
-<body>
-    <div id="game-container">
-        <canvas id="canvas" width="900" height="600"></canvas>
-        
-        <!-- Crosshair -->
-        <div id="crosshair">✕</div>
-        
-        <!-- UI Overlay -->
-        <div id="ui">
-            <div class="stat">
-                ❤️ <span id="health">100</span>
-            </div>
-            <div class="stat">
-                💰 <span id="coins">0</span> POXELS
-            </div>
-            <div class="stat">
-                KILLS: <span id="kills">0</span>
-            </div>
-            <div class="stat" style="color: #ff0;">
-                WEAPON: <span id="weapon-name">PISTOL</span>
-            </div>
-            <div class="stat" id="mode-text">FFA ARENA</div>
-        </div>
-        
-        <!-- Pause / Login Menu -->
-        <div id="menu">
-            <div class="title">POXEL.IO MINI</div>
-            <p style="margin: 20px 0; color: #0ff;">FAST-PACED PIXEL FPS</p>
-            <button onclick="startGame()">PLAY ARENA</button>
-            <button onclick="showAdminLogin()">ADMIN LOGIN</button>
-            <button onclick="togglePause()" style="color:#f66;">EXIT GAME</button>
-            <p style="font-size:10px; margin-top:30px; color:#555;">WASD = Move • MOUSE = Aim & Shoot<br>1-3 = Switch Weapons • ESC = Menu</p>
-        </div>
-        
-        <!-- Admin Panel (only visible to admin) -->
-        <div id="admin-panel">
-            <div style="color:#f00; font-size:18px; margin-bottom:15px; text-align:center;">🔥 ADMIN CONSOLE 🔥</div>
-            <label>SET POXELS (any amount):</label>
-            <input type="number" id="admin-coins-input" value="999999" placeholder="Enter amount">
-            <button onclick="adminGiveCoins()" style="width:100%; background:#f00; color:#000;">GIVE POXELS</button>
-            
-            <button onclick="adminUnlockAll()" style="margin-top:15px; width:100%;">UNLOCK ALL WEAPONS + SKINS</button>
-            <button onclick="adminToggleGodMode()" style="width:100%;">TOGGLE GOD MODE (INVINCIBLE)</button>
-            <button onclick="adminSpawnEnemy()" style="width:100%;">SPAWN ENEMY (for testing)</button>
-            <button onclick="adminGiveAmmo()" style="width:100%;">INFINITE AMMO</button>
-            <button onclick="adminClearEnemies()" style="width:100%; background:#f66;">CLEAR ALL ENEMIES</button>
-            
-            <div style="margin-top:20px; font-size:10px; text-align:center; color:#f88;">
-                ADMIN ACCOUNT ACTIVE<br>
-                You can give ANYTHING unlimited amounts
-            </div>
-            <button onclick="hideAdminPanel()" style="margin-top:15px; background:#222; color:#f00; width:100%;">CLOSE CONSOLE</button>
-        </div>
-    </div>
 
-    <script>
-        // ==================== POXEL.IO MINI GAME ====================
-        // A fully playable single-player pixel FPS arena shooter inspired by poxel.io
-        // Features: blocky voxel-style graphics, weapons, enemies, progression
-        // ADMIN ACCOUNT built-in with unlimited give-anything powers
-        
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = false;
-        
-        // Game variables
-        let player = {
-            x: 450,
-            y: 300,
-            angle: 0,
-            speed: 4.5,
-            health: 100,
-            maxHealth: 100,
-            size: 18,
-            coins: 0,
-            kills: 0
-        };
-        
-        let weapons = [
-            { name: "PISTOL", damage: 25, rate: 250, color: "#ff0", spread: 0, speed: 12 },
-            { name: "RIFLE", damage: 18, rate: 120, color: "#0ff", spread: 3, speed: 15 },
-            { name: "SHOTGUN", damage: 15, rate: 800, color: "#f0f", spread: 25, speed: 10, pellets: 6 },
-            { name: "ROCKET", damage: 80, rate: 1200, color: "#f80", spread: 0, speed: 8 }
-        ];
-        
-        let currentWeaponIndex = 0;
-        let lastFireTime = 0;
-        let projectiles = [];
-        let enemies = [];
-        let particles = []; // voxel explosion bits
-        let walls = [];
-        
-        let keys = {};
-        let mouse = { x: 450, y: 300, down: false };
-        
-        let gameRunning = false;
-        let isPaused = true;
-        let isAdmin = false;
-        let godMode = false;
-        let infiniteAmmo = false;
-        
-        let scoreMultiplier = 1;
-        
-        // Create voxel-style map (blocky walls like poxel.io maps)
-        function generateMap() {
-            walls = [
-                // Outer borders (voxel walls)
-                {x: 0, y: 0, w: 900, h: 30},
-                {x: 0, y: 570, w: 900, h: 30},
-                {x: 0, y: 0, w: 30, h: 600},
-                {x: 870, y: 0, w: 30, h: 600},
-                
-                // Inner voxel structures
-                {x: 120, y: 120, w: 180, h: 30},
-                {x: 120, y: 150, w: 30, h: 150},
-                {x: 270, y: 270, w: 30, h: 180},
-                
-                {x: 600, y: 120, w: 180, h: 30},
-                {x: 750, y: 150, w: 30, h: 150},
-                
-                {x: 300, y: 420, w: 300, h: 30},
-                {x: 420, y: 300, w: 30, h: 150},
-                
-                // More scattered voxel cover
-                {x: 100, y: 400, w: 80, h: 80},
-                {x: 720, y: 400, w: 80, h: 80},
-                {x: 200, y: 520, w: 120, h: 30},
-                {x: 580, y: 80, w: 120, h: 30}
-            ];
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta http-equiv="X-UA-Compatible" content="IE=edge"><base href="/"><script>window.ENABLE_ADS = true;</script><title>Poxel.io | FPS io Game - Play Poxel io Online</title><meta name="description" content="Poxel.io is the ultimate FPS io game. Play Poxel.io online and join the fight with players around the world."><meta name="keywords" content="Poxel.io, FPS io game, Poxel io, Poxel io game, online FPS, io games, Poxel, Poxel io online game, multiplayer FPS"><meta name="author" content="Legion Platforms"><meta name="robots" content="index, follow"><meta name="theme-color" content="#0a0a0a"><meta name="touch-action" content="manipulation"><link rel="dns-prefetch" href="https://files.poxel.io/"><link rel="canonical" href="https://poxel.io/"><link rel="icon" href="https://poxel.io/favicon/favicon.ico" type="image/x-icon"><meta property="og:type" content="website"><meta property="og:title" content="Poxel.io | FPS io Game - Play Poxel io Online"><meta property="og:description" content="Poxel.io is the ultimate FPS io game. Play Poxel.io online and join the fight with players around the world."><meta property="og:image" content="https://poxel.io/background-og.webp"><meta property="og:image:type" content="image/webp"><meta property="og:image:secure_url" content="https://poxel.io/background-og.webp"><meta property="og:image:width" content="1280"><meta property="og:image:height" content="720"><meta property="og:image:alt" content="Poxel.io browser FPS game"><meta property="og:url" content="https://poxel.io"><meta property="og:site_name" content="Poxel.io"><meta property="og:locale" content="en_US"><meta property="og:updated_time" content="2025-05-08T12:00:00Z"><meta property="og:determiner" content="the"><script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-TRWMG587');</script><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Poxel.io | FPS io Game - Play Poxel io Online"><meta name="twitter:description" content="Poxel.io is the ultimate FPS io game. Play Poxel.io online and join the fight with players around the world."><meta name="twitter:image" content="https://poxel.io/background-og.webp"><meta name="twitter:image:alt" content="Poxel.io browser FPS game"><meta name="twitter:site" content="@LegionPlatforms"><script async src="https://www.googletagmanager.com/gtag/js?id=G-3BXCLHNE0L"></script><script>window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-3BXCLHNE0L');</script><meta property="og:video" content="https://www.youtube.com/embed/gnHtAXm_ssk"><meta property="og:video:type" content="text/html"><meta property="og:video:width" content="1280"><meta property="og:video:height" content="720"><meta property="og:video:secure_url" content="https://www.youtube.com/embed/gnHtAXm_ssk"><meta property="video:tag" content="Poxel.io, FPS io game, Poxel io, Poxel io game, online FPS, io games, Poxel, Poxel io online game, multiplayer FPS"><link rel="alternate" hreflang="en" href="https://poxel.io/"><link rel="alternate" hreflang="x-default" href="https://poxel.io/"><script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@type": ["VideoGame", "Game"],
+    "name": "Poxel.io",
+    "description": "Poxel.io is the ultimate FPS io game. Play Poxel.io online and join the fight with players around the world.",
+    "image": [
+      "https://poxel.io/background-og.webp",
+      "https://poxel.io/favicon/android-chrome-512x512.png",
+      "https://poxel.io/favicon/android-chrome-192x192.png"
+    ],
+    "author": {
+      "@type": "Organization",
+      "name": "Legion Platforms"
+    },
+    "url": "https://poxel.io",
+    "inLanguage": "en",
+    "operatingSystem": "Web",
+    "gamePlatform": ["Web", "Browser"],
+    "playMode": "MultiPlayer",
+    "genre": ["Action", "Multiplayer", "Minecraft", "Shooter", "Free", ".io", "FPS"],
+    "keywords": "poxel, poxel.io, Poxel, Online Game, Free to Play, Poxel.io, FPS io game, Poxel io, Poxel io game, online FPS, io games, Poxel, Poxel io online game, multiplayer FPS",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Legion Platforms"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "500000"
+    },
+    "sameAs": [
+      "https://www.facebook.com/profile.php?id=61566034541338",
+      "https://x.com/LegionPlatforms",
+      "https://www.instagram.com/playlegiongames/",
+      "https://www.youtube.com/@poxel-io"
+    ]
+  }</script><script type="application/ld+json" id="website-jsonld">{
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "url": "https://poxel.io/",
+    "name": "Poxel.io",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://poxel.io/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }</script><script type="application/ld+json" id="org-jsonld">{
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Legion Platforms",
+    "url": "https://poxel.io",
+    "logo": "https://poxel.io/favicon/android-chrome-512x512.png",
+    "sameAs": [
+      "https://www.facebook.com/profile.php?id=61566034541338",
+      "https://x.com/LegionPlatforms",
+      "https://www.instagram.com/playlegiongames/",
+      "https://www.youtube.com/@poxel-io"
+    ]
+  }</script><link rel="preload" href="main.css" as="style" onload="this.rel='stylesheet'"><noscript><link rel="stylesheet" href="main.css"></noscript><link rel="preload" href="logo.webp" as="image" fetchpriority="high"><style>@media only screen and (max-width: 768px) {
+      body {
+        overflow: hidden;
+      }
+    }</style><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Poxel.io"><meta name="application-name" content="Poxel.io"><meta name="format-detection" content="telephone=no"><link rel="manifest" href="manifest.json"><link rel="apple-touch-startup-image" href="/splash/apple-splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"><link rel="dns-prefetch" href="//www.google-analytics.com"><link rel="preconnect" href="https://www.google-analytics.com" crossorigin><link rel="preconnect" href="https://poxel.io" crossorigin><link rel="preconnect" href="https://files.poxel.io" crossorigin><link rel="preconnect" href="https://www.googletagmanager.com" crossorigin><link rel="preconnect" href="https://www.youtube.com" crossorigin><meta http-equiv="Permissions-Policy" content="accelerometer=(), camera=(), microphone=(), geolocation=()"><link rel="sitemap" type="application/xml" title="Sitemap" href="https://poxel.io/sitemap.xml"><meta name="googlebot" content="index, follow"><meta name="msvalidate.01" content="CA12CDD2C731B36A8DF91876E3CD78F3"><meta property="og:see_also" content="https://www.youtube.com/@poxel-io"><meta property="og:see_also" content="https://x.com/LegionPlatforms"><meta property="og:see_also" content="https://www.instagram.com/playlegiongames/"><meta property="og:see_also" content="https://www.facebook.com/profile.php?id=61566034541338"><meta http-equiv="Cache-Control" content="public, max-age=600"><meta name="msapplication-TileColor" content="#2d3030"><meta name="msapplication-config" content="https://poxel.io/browserconfig.xml"><link rel="icon" sizes="192x192" href="https://poxel.io/favicon/android-chrome-192x192.png"><link rel="icon" sizes="512x512" href="https://poxel.io/favicon/android-chrome-512x512.png"><link rel="apple-touch-icon" href="https://poxel.io/favicon/apple-touch-icon.png"><script>const url = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    var unityLoadingIsSDKDependant = false;
+    let sdkScriptSrc = "sdk.js";
+
+    // Check query parameters first (more robust), then fallback to URL substring matching
+    if (url.includes("discord")) {
+      sdkScriptSrc = "discord_sdk.js";
+      unityLoadingIsSDKDependant = true;
+    } else if (urlParams.has("cg") || url.includes("crazygames")) {
+      sdkScriptSrc = "cg_sdk.js";
+      // } else if (urlParams.has("poki") || url.includes("poki-gdn.com") || url.includes(".poki.")) {
+      //   sdkScriptSrc = "poki_sdk.js";
+    } else if (urlParams.has("yandex") || url.includes("/yandex")) {
+      // Add Yandex SDK detection
+      sdkScriptSrc = "yandex_sdk.js";
+    } else if (urlParams.has("msn") || url.includes("/msn")) {
+      // Microsoft Start integration
+      sdkScriptSrc = "msn_sdk.js";
+    }
+    const sdkScript = document.createElement("script");
+    sdkScript.src = `${sdkScriptSrc}?v=8`; // update this when any sdk updates
+    document.head.appendChild(sdkScript);
+
+
+    function waitForSDKThenStart(callback) {
+      const maxWait = 10000; //ms
+      const interval = 10; //ms
+      let waited = 0;
+
+      if (!unityLoadingIsSDKDependant) {
+        callback();
+        return;
+      }
+
+      const check = () => {
+        if (window.SDK && typeof window.SDK.getBuildURL === "function") {
+          callback();
+        } else if (waited >= maxWait) {
+          console.warn("SDK not available in time, proceeding anyway.");
+          callback();
+        } else {
+          waited += interval;
+          setTimeout(check, interval);
         }
-        
-        // Spawn enemies (pixel bots like poxel.io)
-        function spawnEnemy() {
-            const side = Math.random() > 0.5 ? 1 : -1;
-            const enemy = {
-                x: Math.random() * 700 + 100,
-                y: side > 0 ? 60 : 520,
-                health: 80,
-                size: 20,
-                speed: 2.2,
-                lastShoot: Date.now(),
-                color: "#f33"
+      };
+      check();
+    }</script><script>(function () {
+      function canonicalHrefFor(locationObj) {
+        return locationObj.origin + locationObj.pathname; // ignore query/fragment for canonical
+      }
+
+      function setCanonicalAndOgUrl() {
+        var href = canonicalHrefFor(window.location);
+        var canonical = document.querySelector('link[rel="canonical"]');
+        if (!canonical) {
+          canonical = document.createElement('link');
+          canonical.setAttribute('rel', 'canonical');
+          document.head.appendChild(canonical);
+        }
+        canonical.setAttribute('href', href);
+
+        var ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) ogUrl.setAttribute('content', href);
+      }
+
+      setCanonicalAndOgUrl();
+
+      var _ps = history.pushState;
+      history.pushState = function () { _ps.apply(history, arguments); setCanonicalAndOgUrl(); };
+      var _rs = history.replaceState;
+      history.replaceState = function () { _rs.apply(history, arguments); setCanonicalAndOgUrl(); };
+      window.addEventListener('popstate', setCanonicalAndOgUrl);
+    })();</script><script>(function () {
+      function toTitleCase(text) {
+        return text.replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+      }
+
+      function injectBreadcrumbs() {
+        var path = window.location.pathname.replace(/\/$/, '');
+        if (path === '' || path === '/') {
+          var existingHome = document.getElementById('breadcrumbs-jsonld');
+          if (existingHome) existingHome.remove();
+          return;
+        }
+
+        var items = [{ name: 'Home', url: window.location.origin + '/' }];
+
+        if (path === '/shop') {
+          items.push({ name: 'Shop', url: window.location.origin + '/shop' });
+        } else if (path === '/inventory') {
+          items.push({ name: 'Inventory', url: window.location.origin + '/inventory' });
+        } else if (path === '/classes') {
+          items.push({ name: 'Classes', url: window.location.origin + '/classes' });
+        } else if (path === '/play-with-friends') {
+          items.push({ name: 'Play With Friends', url: window.location.origin + '/play-with-friends' });
+        } else if (path === '/servers') {
+          items.push({ name: 'Servers', url: window.location.origin + '/servers' });
+        } else if (path === '/settings') {
+          items.push({ name: 'Settings', url: window.location.origin + '/settings' });
+        } else if (path === '/login') {
+          items.push({ name: 'Login', url: window.location.origin + '/login' });
+        } else if (path === '/free') {
+          items.push({ name: 'Free', url: window.location.origin + '/free' });
+        } else if (/^\/profile\//.test(path)) {
+          var username = path.split('/').pop();
+          items.push({ name: 'Profile', url: window.location.origin + '/profile/' });
+          items.push({ name: username, url: window.location.origin + path });
+        } else if (/^\/inspect_/.test(path)) {
+          items.push({ name: 'Inspect Item', url: window.location.origin + path });
+        } else if (/^\/bundle_/.test(path)) {
+          items.push({ name: 'Bundle', url: window.location.origin + path });
+        } else {
+          var seg = path.split('/').pop();
+          items.push({ name: toTitleCase(seg), url: window.location.origin + path });
+        }
+
+        var breadcrumbs = {
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          'itemListElement': items.map(function (item, index) {
+            return {
+              '@type': 'ListItem',
+              'position': index + 1,
+              'name': item.name,
+              'item': item.url
             };
-            enemies.push(enemy);
+          })
+        };
+
+        var existing = document.getElementById('breadcrumbs-jsonld');
+        if (existing) existing.remove();
+        var script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.id = 'breadcrumbs-jsonld';
+        script.text = JSON.stringify(breadcrumbs);
+        document.head.appendChild(script);
+      }
+
+      injectBreadcrumbs();
+      var _ps = history.pushState;
+      history.pushState = function () { _ps.apply(history, arguments); injectBreadcrumbs(); };
+      var _rs = history.replaceState;
+      history.replaceState = function () { _rs.apply(history, arguments); injectBreadcrumbs(); };
+      window.addEventListener('popstate', injectBreadcrumbs);
+    })();</script><script>(function () {
+      var routeToMeta = {
+        '/': {
+          title: 'Poxel.io | FPS io Game - Play Poxel io Online',
+          description: 'Poxel.io is the ultimate FPS io game. Play Poxel.io online and join the fight with players around the world.'
+        },
+        '/shop': {
+          title: 'Poxel.io Shop | Items, Bundles & Cosmetics',
+          description: 'Browse the Poxel.io shop to unlock skins, bundles, and cosmetics. Earn, purchase, and equip items to stand out in battle.'
+        },
+        '/inventory': {
+          title: 'Poxel.io Inventory | Manage Your Skins & Items',
+          description: 'View and manage your unlocked items, skins, and cosmetics for Poxel.io. Equip your favorites and jump back into action.'
+        },
+        '/classes': {
+          title: 'Poxel.io Classes | Choose Your Playstyle',
+          description: 'Discover Poxel.io classes and tailor your loadout to your preferred playstyle.'
+        },
+        '/play-with-friends': {
+          title: 'Poxel.io | Play With Friends',
+          description: 'Create or join rooms and play Poxel.io with friends. Share your room code to squad up quickly.'
+        },
+        '/servers': {
+          title: 'Poxel.io Servers | Regions & Matchmaking',
+          description: 'Pick the best Poxel.io server region for lower ping and better matchmaking.'
+        },
+        '/settings': {
+          title: 'Poxel.io Settings | Controls & Graphics',
+          description: 'Tune your controls, graphics, and gameplay settings for the best Poxel.io experience.'
+        },
+        '/login': {
+          title: 'Login | Poxel.io',
+          description: 'Log in to your Poxel.io account to sync progress and items.'
+        },
+        '/free': {
+          title: 'Free Rewards | Poxel.io',
+          description: 'Claim your free rewards and bonuses in Poxel.io.'
         }
-        
-        // Create explosion particles (voxel bits)
-        function createExplosion(x, y, count, color) {
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x: x,
-                    y: y,
-                    vx: (Math.random() - 0.5) * 8,
-                    vy: (Math.random() - 0.5) * 8,
-                    life: 35,
-                    size: Math.random() * 6 + 3,
-                    color: color
-                });
-            }
+      };
+
+      function setMeta(meta) {
+        if (!meta) return;
+        if (meta.title) document.title = meta.title;
+        var desc = document.querySelector('meta[name="description"]');
+        if (desc && meta.description) desc.setAttribute('content', meta.description);
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle && meta.title) ogTitle.setAttribute('content', meta.title);
+        var twTitle = document.querySelector('meta[name="twitter:title"]');
+        if (twTitle && meta.title) twTitle.setAttribute('content', meta.title);
+        var ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogDesc && meta.description) ogDesc.setAttribute('content', meta.description);
+        var twDesc = document.querySelector('meta[name="twitter:description"]');
+        if (twDesc && meta.description) twDesc.setAttribute('content', meta.description);
+      }
+
+      function updateRouteMeta() {
+        var path = window.location.pathname.replace(/\/$/, '') || '/';
+        var meta = routeToMeta[path];
+
+        // Pattern routes
+        if (!meta) {
+          if (/^\/inspect_/.test(path)) {
+            meta = {
+              title: 'Inspect Item | Poxel.io',
+              description: 'View item details and shareable links in Poxel.io.'
+            };
+          } else if (/^\/bundle_/.test(path)) {
+            meta = {
+              title: 'Bundle | Poxel.io',
+              description: 'Preview and purchase bundles in the Poxel.io shop.'
+            };
+          } else if (/^\/profile\//.test(path)) {
+            var username = path.split('/').pop();
+            meta = {
+              title: username ? (username + ' | Profile | Poxel.io') : 'Profile | Poxel.io',
+              description: 'View player profiles and stats in Poxel.io.'
+            };
+          }
         }
-        
-        // Check rectangle collision (AABB)
-        function rectCollision(a, b) {
-            return !(
-                a.x + a.w < b.x ||
-                b.x + b.w < a.x ||
-                a.y + a.h < b.y ||
-                b.y + b.h < a.y
-            );
+
+        setMeta(meta);
+      }
+
+      updateRouteMeta();
+      var _ps = history.pushState;
+      history.pushState = function () { _ps.apply(history, arguments); updateRouteMeta(); };
+      var _rs = history.replaceState;
+      history.replaceState = function () { _rs.apply(history, arguments); updateRouteMeta(); };
+      window.addEventListener('popstate', updateRouteMeta);
+    })();</script></head><body style="background-color: black; color: black;"><div id="videoad"></div><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TRWMG587" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript><div id="unity-container"><canvas id="unity-canvas"></canvas></div><div id="unity-loading-container"><div id="loading-percentage">1%</div><img src="logo.webp" class="logo" alt="Poxel.io Logo" decoding="async" fetchpriority="high"><div id="unity-loading-bar"><div id="unity-loading-bar-inner"></div></div></div><script type="application/ld+json" id="faq-jsonld">{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is Poxel.io a free FPS game?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Poxel.io is free to play in your browser with no download required." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I play Poxel.io with friends?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Create a room in Play With Friends and share the code for others to join instantly." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Poxel.io have items and skins?",
+        "acceptedAnswer": { "@type": "Answer", "text": "You can unlock and equip skins, items, and bundles in the Shop and Inventory." }
+      }
+    ]
+  }</script><script>// Safe build URL
+    function getSafeBuildURL() {
+      try {
+        if (typeof window.SDK?.getBuildURL === "function") {
+          return window.SDK.getBuildURL();
         }
-        
-        // Player movement with wall collision
-        function movePlayer() {
-            let dx = 0;
-            let dy = 0;
-            
-            if (keys['w'] || keys['W']) dy -= 1;
-            if (keys['s'] || keys['S']) dy += 1;
-            if (keys['a'] || keys['A']) dx -= 1;
-            if (keys['d'] || keys['D']) dx += 1;
-            
-            if (dx !== 0 || dy !== 0) {
-                const len = Math.sqrt(dx * dx + dy * dy);
-                dx = (dx / len) * player.speed;
-                dy = (dy / len) * player.speed;
-                
-                const newX = player.x + dx;
-                const newY = player.y + dy;
-                
-                // Check walls
-                let canMoveX = true;
-                let canMoveY = true;
-                
-                const tempRectX = {x: newX - player.size/2, y: player.y - player.size/2, w: player.size, h: player.size};
-                const tempRectY = {x: player.x - player.size/2, y: newY - player.size/2, w: player.size, h: player.size};
-                
-                for (let wall of walls) {
-                    if (rectCollision(tempRectX, wall)) canMoveX = false;
-                    if (rectCollision(tempRectY, wall)) canMoveY = false;
-                }
-                
-                if (canMoveX) player.x = newX;
-                if (canMoveY) player.y = newY;
-            }
+      } catch (e) {
+        console.warn("SDK.getBuildURL failed:", e);
+      }
+      return "Build"; // fallback
+    }
+
+    // Safe Streaming Assets URL
+    function getSafeStreamingAssetsUrl() {
+      try {
+        if (typeof window.SDK?.getStreamingAssetsUrl === "function") {
+          return window.SDK.getStreamingAssetsUrl();
         }
-        
-        // Update projectiles
-        function updateProjectiles() {
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                const p = projectiles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life = (p.life || 60) - 1;
-                
-                // Wall collision
-                for (let w = 0; w < walls.length; w++) {
-                    const wall = walls[w];
-                    if (p.x > wall.x && p.x < wall.x + wall.w &&
-                        p.y > wall.y && p.y < wall.y + wall.h) {
-                        createExplosion(p.x, p.y, 8, "#aaa");
-                        projectiles.splice(i, 1);
-                        return;
-                    }
-                }
-                
-                if (p.life <= 0) {
-                    projectiles.splice(i, 1);
-                    continue;
-                }
-                
-                // Hit player
-                if (p.owner === 'enemy') {
-                    const dx = p.x - player.x;
-                    const dy = p.y - player.y;
-                    if (Math.sqrt(dx*dx + dy*dy) < player.size) {
-                        if (!godMode) player.health -= p.damage || 15;
-                        createExplosion(p.x, p.y, 12, "#f00");
-                        projectiles.splice(i, 1);
-                        
-                        if (player.health <= 0) {
-                            gameOver();
-                        }
-                        continue;
-                    }
-                }
-                
-                // Hit enemies
-                if (p.owner === 'player') {
-                    for (let e = enemies.length - 1; e >= 0; e--) {
-                        const enemy = enemies[e];
-                        const dx = p.x - enemy.x;
-                        const dy = p.y - enemy.y;
-                        if (Math.sqrt(dx*dx + dy*dy) < enemy.size) {
-                            enemy.health -= p.damage || 25;
-                            createExplosion(p.x, p.y, 15, "#ff0");
-                            projectiles.splice(i, 1);
-                            
-                            if (enemy.health <= 0) {
-                                player.kills++;
-                                player.coins += Math.floor(25 * scoreMultiplier);
-                                createExplosion(enemy.x, enemy.y, 30, "#f80");
-                                enemies.splice(e, 1);
-                                
-                                // Chance to drop extra coins
-                                if (Math.random() > 0.7) player.coins += 15;
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
+      } catch (e) {
+        console.warn("SDK.getStreamingAssetsUrl failed:", e);
+      }
+      return "/StreamingAssets"; // fallback
+    }
+
+    // Safe Static Resolution Scale Multi
+    function getSafeStaticResolutionScaleMulti() {
+      try {
+        if (typeof window.SDK?.getStaticResolutionScaleMulti === "function") {
+          return window.SDK.getStaticResolutionScaleMulti();
         }
-        
-        // Update enemies (simple AI like poxel.io bots)
-        function updateEnemies() {
-            for (let i = 0; i < enemies.length; i++) {
-                const e = enemies[i];
-                
-                // Move toward player
-                const dx = player.x - e.x;
-                const dy = player.y - e.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist > 0) {
-                    e.x += (dx / dist) * e.speed;
-                    e.y += (dy / dist) * e.speed;
-                }
-                
-                // Wall avoidance (basic bounce)
-                for (let w = 0; w < walls.length; w++) {
-                    const wall = walls[w];
-                    const temp = {x: e.x - e.size/2, y: e.y - e.size/2, w: e.size, h: e.size};
-                    if (rectCollision(temp, wall)) {
-                        e.x -= (dx / dist) * e.speed * 2;
-                        e.y -= (dy / dist) * e.speed * 2;
-                    }
-                }
-                
-                // Enemy shooting
-                if (Date.now() - e.lastShoot > 800 && dist < 280) {
-                    e.lastShoot = Date.now();
-                    const angle = Math.atan2(dy, dx);
-                    projectiles.push({
-                        x: e.x,
-                        y: e.y,
-                        vx: Math.cos(angle) * 9,
-                        vy: Math.sin(angle) * 9,
-                        damage: 18,
-                        owner: 'enemy',
-                        life: 55,
-                        color: '#f66'
-                    });
-                }
-            }
-        }
-        
-        // Fire weapon
-        function fireWeapon() {
-            if (!gameRunning) return;
-            
-            const now = Date.now();
-            const weapon = weapons[currentWeaponIndex];
-            
-            if (now - lastFireTime < weapon.rate) return;
-            
-            lastFireTime = now;
-            
-            const angle = player.angle;
-            const spread = (weapon.spread || 0) * (Math.random() - 0.5);
-            
-            if (weapon.pellets) {
-                // Shotgun
-                for (let i = 0; i < weapon.pellets; i++) {
-                    const pelletAngle = angle + (Math.random() * weapon.spread * 0.017 - weapon.spread * 0.0085);
-                    projectiles.push({
-                        x: player.x,
-                        y: player.y,
-                        vx: Math.cos(pelletAngle) * weapon.speed,
-                        vy: Math.sin(pelletAngle) * weapon.speed,
-                        damage: weapon.damage,
-                        owner: 'player',
-                        life: 30,
-                        color: weapon.color
-                    });
-                }
-            } else {
-                // Normal weapon
-                projectiles.push({
-                    x: player.x,
-                    y: player.y,
-                    vx: Math.cos(angle + spread * 0.017) * weapon.speed,
-                    vy: Math.sin(angle + spread * 0.017) * weapon.speed,
-                    damage: weapon.damage,
-                    owner: 'player',
-                    life: 50,
-                    color: weapon.color
-                });
-            }
-            
-            // Muzzle flash particles
-            createExplosion(player.x + Math.cos(angle) * 22, player.y + Math.sin(angle) * 22, 6, "#ff0");
-        }
-        
-        // Draw everything in voxel style
-        function draw() {
-            ctx.fillStyle = '#1a1a2e';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw walls (blocky voxel style)
-            ctx.fillStyle = '#555';
-            ctx.strokeStyle = '#aaa';
-            ctx.lineWidth = 4;
-            for (let wall of walls) {
-                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
-                ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
-                
-                // Inner voxel lines for style
-                ctx.fillStyle = '#777';
-                ctx.fillRect(wall.x + 8, wall.y + 8, wall.w - 16, 8);
-                ctx.fillRect(wall.x + 8, wall.y + wall.h - 16, wall.w - 16, 8);
-            }
-            
-            // Draw projectiles
-            for (let p of projectiles) {
-                ctx.fillStyle = p.color || '#ff0';
-                ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
-            }
-            
-            // Draw enemies (red voxel bots)
-            for (let e of enemies) {
-                ctx.fillStyle = e.color;
-                ctx.fillRect(e.x - e.size/2, e.y - e.size/2, e.size, e.size);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(e.x - e.size/2, e.y - e.size/2, e.size, e.size);
-                
-                // Health bar
-                const healthPercent = Math.max(0, e.health / 80);
-                ctx.fillStyle = '#000';
-                ctx.fillRect(e.x - 18, e.y - e.size/2 - 12, 36, 6);
-                ctx.fillStyle = healthPercent > 0.4 ? '#0f0' : '#f00';
-                ctx.fillRect(e.x - 18, e.y - e.size/2 - 12, 36 * healthPercent, 6);
-            }
-            
-            // Draw player (blue voxel hero with gun)
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            ctx.rotate(player.angle);
-            
-            // Body
-            ctx.fillStyle = isAdmin ? '#f0f' : '#0af';
-            ctx.fillRect(-player.size/2, -player.size/2, player.size, player.size);
-            
-            // Voxel highlight
-            ctx.fillStyle = '#0ff';
-            ctx.fillRect(-player.size/2 + 4, -player.size/2 + 4, player.size - 12, 8);
-            
-            // Gun barrel
-            ctx.fillStyle = '#333';
-            ctx.fillRect(8, -5, 28, 10);
-            ctx.fillStyle = '#ddd';
-            ctx.fillRect(30, -3, 12, 6);
-            
-            ctx.restore();
-            
-            // Particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                ctx.globalAlpha = p.life / 35;
-                ctx.fillStyle = p.color;
-                ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
-                p.vx *= 0.96;
-                p.vy *= 0.96;
-                if (p.life <= 0) particles.splice(i, 1);
-            }
-            ctx.globalAlpha = 1;
-            
-            // Update UI
-            document.getElementById('health').textContent = Math.max(0, Math.floor(player.health));
-            document.getElementById('coins').textContent = Math.floor(player.coins);
-            document.getElementById('kills').textContent = player.kills;
-            document.getElementById('weapon-name').textContent = weapons[currentWeaponIndex].name;
-            
-            if (godMode) {
-                ctx.fillStyle = 'rgba(255, 0, 255, 0.3)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-        
-        // Main game loop
-        function gameLoop() {
-            if (!gameRunning) return;
-            
-            movePlayer();
-            updateProjectiles();
-            updateEnemies();
-            
-            // Auto-fire if mouse down
-            if (mouse.down) {
-                fireWeapon();
-            }
-            
-            // Spawn enemies if too few
-            if (enemies.length < 5 && Math.random() < 0.02) {
-                spawnEnemy();
-            }
-            
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-        
-        // Start new game
-        function startGame() {
-            document.getElementById('menu').style.display = 'none';
-            gameRunning = true;
-            isPaused = false;
-            
-            // Reset player
-            player.x = 450;
-            player.y = 300;
-            player.health = 100;
-            player.coins = isAdmin ? 999999 : 150;
-            player.kills = 0;
-            
-            projectiles = [];
-            particles = [];
-            enemies = [];
-            
-            // Spawn initial enemies
-            for (let i = 0; i < 6; i++) {
-                spawnEnemy();
-            }
-            
-            lastFireTime = Date.now();
-            
-            gameLoop();
-        }
-        
-        function gameOver() {
-            gameRunning = false;
-            alert("💥 YOU WERE DEFEATED!\n\nKills: " + player.kills + "\nPoxels earned: " + player.coins + "\n\nAdmin status: " + (isAdmin ? "ENABLED 🔥" : "OFF"));
-            document.getElementById('menu').style.display = 'block';
-        }
-        
-        // Admin login
-        function showAdminLogin() {
-            const password = prompt("🔑 ENTER ADMIN PASSWORD\n(Hint: it's in the game title + your power)", "");
-            if (password === "poxeladmin" || password === "giveanything" || password === "grokpower") {
-                isAdmin = true;
-                godMode = true;
-                infiniteAmmo = true;
-                player.coins = 9999999;
-                alert("✅ ADMIN ACCOUNT ACTIVATED!\n\nYou now have:\n• Unlimited Poxels\n• God Mode\n• All weapons unlocked\n• Ability to give ANYTHING any amount\n\nUse the red ADMIN CONSOLE in-game");
-                document.getElementById('admin-panel').style.display = 'block';
-                startGame();
-            } else {
-                alert("❌ Wrong password. Try again.");
-            }
-        }
-        
-        function hideAdminPanel() {
-            document.getElementById('admin-panel').style.display = 'none';
-        }
-        
-        // ADMIN FUNCTIONS - give anything any amount
-        function adminGiveCoins() {
-            const amount = parseInt(document.getElementById('admin-coins-input').value) || 999999;
-            player.coins = amount;
-            alert("✅ GAVE " + amount + " POXELS!\nUnlimited power activated.");
-        }
-        
-        function adminUnlockAll() {
-            player.coins = 999999999;
-            alert("✅ ALL WEAPONS + SKINS UNLOCKED\nYou now own everything in the game.");
-        }
-        
-        function adminToggleGodMode() {
-            godMode = !godMode;
-            alert(godMode ? "🛡️ GOD MODE ENABLED (you are immortal)" : "🛡️ God mode disabled");
-        }
-        
-        function adminSpawnEnemy() {
-            spawnEnemy();
-            alert("👾 Spawned extra enemy for testing!");
-        }
-        
-        function adminGiveAmmo() {
-            infiniteAmmo = !infiniteAmmo;
-            alert(infiniteAmmo ? "🔫 INFINITE AMMO ENABLED" : "🔫 Infinite ammo disabled");
-        }
-        
-        function adminClearEnemies() {
-            enemies = [];
-            alert("💥 ALL ENEMIES DESTROYED (admin wipe)");
-        }
-        
-        function togglePause() {
-            if (gameRunning) {
-                gameRunning = false;
-                document.getElementById('menu').style.display = 'block';
-            }
-        }
-        
-        // Input handlers
-        window.addEventListener('keydown', e => {
-            keys[e.key] = true;
-            
-            if (e.key === 'Escape' && gameRunning) {
-                togglePause();
-            }
-            
-            // Weapon switch
-            if (e.key === '1') currentWeaponIndex = 0;
-            if (e.key === '2') currentWeaponIndex = 1;
-            if (e.key === '3') currentWeaponIndex = 2;
-            if (e.key === '4') currentWeaponIndex = 3;
-            
-            // Quick admin toggle (for convenience)
-            if (e.key === '/' && isAdmin) {
-                const panel = document.getElementById('admin-panel');
-                panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
-            }
+      } catch (e) {
+        console.warn("SDK.getStaticResolutionScaleMulti failed:", e);
+      }
+      return 1.00; // fallback
+    }
+
+    waitForSDKThenStart(() => {
+      var buildUrl = getSafeBuildURL();
+      var loaderUrl = buildUrl + "/c4a66985ea38c8c617395c6d06cf025a.loader.js";
+      // Determine if we're on mobile
+      var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      var safeStaticResolutionScaleMulti = getSafeStaticResolutionScaleMulti();
+      var config = {
+        dataUrl: buildUrl + "/8883bb3fe3975726563152a28a64aee1.data.br",
+        frameworkUrl: buildUrl + "/c748b99ae3e67faa2aa82d8e912e60c2.framework.js.br",
+        codeUrl: buildUrl + "/18c34d7cc725daf344050d4747544f66.wasm.br",
+        streamingAssetsUrl: getSafeStreamingAssetsUrl(),
+        companyName: "LEGiON Platforms",
+        productName: "Poxel.io",
+        productVersion: "15z76585024",
+        autoSyncPersistentDataPath: true,
+        devicePixelRatio: 1.0 * safeStaticResolutionScaleMulti // default value, will be updated below
+      };
+
+      // Default DPR based on platform
+      var defaultDPR = safeStaticResolutionScaleMulti * (isMobile ? 1.3 : 1.0);
+      // Attempt to read the ResolutionScale from localStorage
+      var lsValue = localStorage.getItem("ResolutionScale");
+      var parsedValue = parseFloat(lsValue);
+      // If localStorage contains a valid number, use it; otherwise use the default.
+      var finalResolutionScaleValue = !isNaN(parsedValue) ? parsedValue : defaultDPR;
+      config.devicePixelRatio = finalResolutionScaleValue;
+
+      if (isMobile) {
+        document.addEventListener('touchmove', function (event) {
+          if (event.scale !== 1) {
+            event.preventDefault();
+          }
+        }, { passive: false });
+      }
+
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingContainer = document.querySelector("#unity-loading-container");
+      var loadingBar = document.querySelector("#unity-loading-bar-inner");
+      var loadingPercentageElem = document.querySelector("#loading-percentage");
+
+      //progress simulation for better UX
+      const minProg = 51;
+      const maxProg = 99;
+      var targetProgress = minProg;
+
+      function updateProgress() {
+        targetProgress += 0.12;
+        targetProgress = Math.min(Math.max(targetProgress, minProg), maxProg);
+        loadingBar.style.width = targetProgress + "%";
+        loadingPercentageElem.textContent = Math.floor(targetProgress) + "%";
+      }
+
+      // Start the interval to update progress every 100ms
+      var progressInterval = setInterval(updateProgress, 100);
+
+      if (window.SDK && typeof window.SDK.loadingStart === 'function') {
+        window.SDK.loadingStart();
+      }
+
+      function startUnity() {
+        createUnityInstance(canvas, config, function (progress) {
+          var actualProgress = Math.min(Math.max(progress * 100, minProg), maxProg);
+          if (actualProgress > targetProgress) {
+            targetProgress = actualProgress;
+          }
+        }).then(function (unityInstance) {
+          window.unityInstance = unityInstance;
+
+          if (window.SDK && typeof window.SDK.loadingEnd === 'function') {
+            window.SDK.loadingEnd();
+          }
+
+          // Ensure the loading bar fills to 100% smoothly
+          targetProgress = 100;
+          loadingBar.style.width = "100%";
+          loadingPercentageElem.textContent = "100%";
+          clearInterval(progressInterval);
+          loadingContainer?.remove();
+        }).catch(function (message) {
+          clearInterval(progressInterval);
+          console.error(message);
         });
-        
-        window.addEventListener('keyup', e => {
-            keys[e.key] = false;
-        });
-        
-        canvas.addEventListener('mousemove', e => {
-            const rect = canvas.getBoundingClientRect();
-            mouse.x = e.clientX - rect.left;
-            mouse.y = e.clientY - rect.top;
-            
-            // Calculate player angle to mouse (FPS style)
-            const dx = mouse.x - player.x;
-            const dy = mouse.y - player.y;
-            player.angle = Math.atan2(dy, dx);
-        });
-        
-        canvas.addEventListener('mousedown', e => {
-            if (e.button === 0) mouse.down = true;
-        });
-        
-        canvas.addEventListener('mouseup', e => {
-            if (e.button === 0) mouse.down = false;
-        });
-        
-        // Initialize game
-        function init() {
-            console.log('%c✅ POXEL.IO MINI LOADED - Admin account ready!', 'color:#0ff; font-family:monospace');
-            generateMap();
-            document.getElementById('menu').style.display = 'block';
-            
-            // Welcome message
-            console.log('🔥 Admin password: poxeladmin or giveanything');
-            console.log('You can now give ANYTHING any amount in the admin console.');
+      }
+
+      function loadUnityLoaderWithRetry(url, attempt, maxAttempts) {
+        var script = document.createElement("script");
+        var cacheBust = (url.indexOf('?') === -1 ? '?' : '&') + 'retry=' + attempt + '&t=' + Date.now();
+        script.src = url + cacheBust;
+        script.addEventListener('load', startUnity, { once: true });
+        script.addEventListener('error', function () {
+          console.warn("Unity loader failed (attempt", attempt, "of", maxAttempts, ")", url);
+          if (attempt < maxAttempts) {
+            var nextAttempt = attempt + 1;
+            var retryDelayMs = Math.min(1000 * attempt, 3000);
+            loadingPercentageElem.textContent = 'Retrying… (' + nextAttempt + '/' + maxAttempts + ')';
+            setTimeout(function () {
+              loadUnityLoaderWithRetry(url, nextAttempt, maxAttempts);
+            }, retryDelayMs);
+          } else {
+            clearInterval(progressInterval);
+            loadingBar.style.width = "100%";
+            loadingPercentageElem.textContent = 'Load failed. Please refresh.';
+            console.error("Unity loader failed after", maxAttempts, "attempts:", url);
+          }
+        }, { once: true });
+        document.body.appendChild(script);
+      }
+
+      if (typeof window.createUnityInstance === 'function') {
+        startUnity();
+      } else {
+        var existingLoader = document.querySelector('script[src="' + loaderUrl + '"]');
+        if (existingLoader) {
+          existingLoader.addEventListener('load', startUnity, { once: true });
+        } else {
+          loadUnityLoaderWithRetry(loaderUrl, 1, 3);
         }
-        
-        // Start everything
-        init();
-    </script>
-</body>
-</html>
+      }
+    });</script><noscript>Please enable JavaScript to run this game! Learn how <a href="https://support.google.com/adsense/answer/12654" target="_blank" rel="noopener noreferrer">here</a>.</noscript><script src="s/cursor.js" defer="defer"></script><script src="s/pwa.js" defer="defer"></script><script src="s/utils.js" defer="defer"></script><script src="s/analytics.js" defer="defer"></script><script src="s/pinger.js" defer="defer"></script><script src="s/exit-intent.js" defer="defer"></script><script>if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('s/sw.js');
+      });
+    }</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ed607641f412ed2',t:'MTc3NjM3MjI3NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"d69cada0510a4a65880306cd3448c429","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body></html>
