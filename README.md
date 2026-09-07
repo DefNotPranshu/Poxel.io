@@ -1,0 +1,1 @@
+Lets never use this code outside of PoxelFanHub Server, If you do or view the html code without permission (by hacking) I will do nothing about it because it is absolutely pathetic going to a small poxel.io server and just ruining the website and server so I hope you have enough sense not to do it!
